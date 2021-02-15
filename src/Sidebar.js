@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import "./Sidebar.css"
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import AddIcon from '@material-ui/icons/Add'
@@ -10,8 +10,35 @@ import MicIcon from '@material-ui/icons/Mic'
 import HeadsetIcon from '@material-ui/icons/Headset'
 import SettingsIcon from '@material-ui/icons/Settings'
 import SidebarChannel from './SidebarChannel';
+import { useSelector } from 'react-redux';
+import { selectUser } from './features/userSlice';
+import db, { auth } from './firebase';
+import firebase from "firebase"
 
 function Sidebar() {
+
+    const user = useSelector(selectUser);
+    const [channels,setChannels] =useState([])
+
+    useEffect(()=>{
+        db.collection("channels").orderBy("timestamp", "desc").onSnapshot((snapshot) =>setChannels(snapshot.docs.map((doc)=>({
+            id: doc.id,
+            channel: doc.data()
+        }))
+        )
+    )
+    },[])
+
+    const handleAddChannel=()=>{
+        const channelName=prompt("Enter a new channel name");
+
+        if(channelName){
+            db.collection("channels").add({
+                timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+                channelName: channelName,
+            })
+        }
+    }
     return (
         <div className="sidebar">
             <div className="sidebar__top">
@@ -24,10 +51,19 @@ function Sidebar() {
                         <ExpandMoreIcon />
                         <h4>Text Channel</h4>
                     </div>
-                    <AddIcon className="sidebar__addChannel" />
+                    <AddIcon 
+                    onClick={handleAddChannel}
+                    className="sidebar__addChannel" />
                 </div>
                 <div className="sidebar__channelsList">
-                <SidebarChannel />
+                    {channels.map(({id,channel})=>(
+                        <SidebarChannel
+                            key={id}
+                            id={id}
+                            timestamp={channel.timestamp}
+                            channelName={channel.channelName}
+                        />
+                    ))}
             </div>
             </div>
             <div className="sidebar__voice">
@@ -42,10 +78,10 @@ function Sidebar() {
                 </div>
             </div>
             <div className="sidebar__profile">
-                <Avatar />
+                <Avatar onClick={()=>auth.signOut()} src={user.photo} />
                 <div className="sidebar__profileInfo">
-                    <h3>Samir</h3>
-                    <p>@samir19</p>
+                    <h3>{user.displayName}</h3>
+                    <p>#{user.uid.substring(0,5)}</p>
                 </div>
                 <div className="sidebar__profileIcons">
                     <MicIcon />
